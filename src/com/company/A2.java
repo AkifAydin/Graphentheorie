@@ -4,10 +4,7 @@ import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.*;
 
 
-import java.awt.*;
-import java.lang.invoke.MutableCallSite;
 import java.util.ArrayList;
-import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,43 +17,282 @@ public class A2 {
         Graph g = new MultiGraph("g");
         g.setAttribute("ui.stylesheet", "node { fill-mode: dyn-plain; }");
 
-        g.addNode("v1").setAttribute("ui.color", Color.BLUE);
-        g.addNode("v2").setAttribute("ui.color", Color.RED);
-        g.addEdge("v1v2", "v1", "v2");
+        g.addNode("a");
+        g.addNode("b");
+        g.addNode("c");
+        g.addNode("d");
+        g.addNode("e");
 
 
-        g.display();
+        g.addEdge("ac", "a", "c");
+        g.addEdge("cd", "c", "d");
+        g.addEdge("ad", "a", "d");
+        g.addEdge("ae", "a", "e");
+        g.addEdge("ab", "a", "b");
+        g.addEdge("de", "d", "e");
+        //bedac
 
+        System.out.println(createPerfectElimination(g, g.getNode("b")));
+        //{1=e, 2=d, 3=c, 4=a, 5=b}
+
+        System.out.println(testElimination(g, createPerfectElimination(g, g.getNode("b"))));
+
+        List<Node> nodes = colorChordaleGraph(g, createPerfectElimination(g, g.getNode("b"))).nodes().toList();
+        nodes.forEach(n -> {
+            System.out.println("Node: "+ n.getId() + "   Color: " + n.getAttribute("color"));
+        });
+        System.out.println("Anzahl Farben: " + getChromaticNumber(g,createPerfectElimination(g, g.getNode("b"))));
+
+
+        //Graph graph = generateCompleteGraph(50);
+        //graph.display();
     }
 
-    public static void lexbfs(Graph g, Node v){
-        List<String> result = new ArrayList<>();
-        int nodesCount = g.getNodeCount();
+
+    /**
+     * Berechnet ein perfektes Eliminationsschema mithilfe des lex-bfs
+     *
+     * @param graph        gegebener Graph
+     * @param startingNode node welche Anfagns entfernt werden soll
+     * @return Liste mit Nodes
+     */
+    public static Map<Integer, Node> createPerfectElimination(Graph graph, Node startingNode) {
+
+        if(startingNode==null){
+            throw new IllegalArgumentException("StartingNode existiert nicht");
+        }
+        if(graph.getNode(startingNode.getId())==null){
+            throw new IllegalArgumentException("StartingNode wurde nicht gefunden");
+        }
+
+
+        // Initialize
+        Graph g = Graphs.clone(graph);
+        Map<Integer, Node> sigma = new HashMap<>();
+        List<Node> unnumeriert = new ArrayList<>();
+        g.nodes().forEach(unnumeriert::add);
+        // Prepare nodes
+        g.nodes().forEach(n -> n.setAttribute("label", "0"));
+        g.nodes().forEach(n -> n.setAttribute("marke", ""));
+
+        Node u = g.getNode(startingNode.getId());
+
+        for (int i = g.getNodeCount(); i > 0; i--) {
+            sigma.put(i, graph.getNode(u.getId()));
+            unnumeriert.remove(u);
+            u.setAttribute("marke", "" + i);
+
+            int finalI = i;
+            u.neighborNodes().forEach((Node n) -> {
+                if (n.getAttribute("marke") != "") { // TODO: bei anderen !=
+                    return;
+                }
+                if (n.getAttribute("label") == "0"){
+                    n.setAttribute("label", String.valueOf(finalI));
+                    return;
+                }
+                n.setAttribute("label", n.getAttribute("label") + String.valueOf(finalI));
+            });
+            unnumeriert = unnumeriert.stream().sorted(Comparator.comparing(n -> Integer.parseInt((String) n.getAttribute("label")))).collect(Collectors.toList());
+            Collections.reverse(unnumeriert);
+            if (!unnumeriert.isEmpty()) {
+                u = unnumeriert.get(0);
+            }
+        }
+        return sigma;
+    }
+
+    /**
+     * Tests if a given elimination scheme is correct for given graph
+     * @param g given graph
+     * @param sigma given elimination scheme
+     * @return true or false
+     */
+    public static boolean testElimination(Graph g, Map<Integer, Node> sigma) {
+        if(sigma.size()!=g.getNodeCount()){
+            return false;
+        }
+
+
+        //Graph ga = Graphs.clone(graph);
+        Map<Node, List<Node>> A = new HashMap<>();
+
         g.nodes().forEach(n -> {
-            n.setAttribute("label","");
+            A.put(n, new ArrayList<>());
         });
 
-        for (int i = nodesCount; i >= 1; i--) {
-            List<Node> unnummerierte = new ArrayList<>();
-            g.nodes().forEach(n -> {
-                if (n.getAttribute("label")==""){
-                    unnummerierte.add(n);
-                }
-            });
-            Optional<Node> optionalU = unnummerierte.stream().max(Comparator.comparing(n -> n.getId()));
-            if (optionalU.isPresent()){
-                Node u = optionalU.get();
-                int index = Integer.parseInt(u.getId().substring(1));
-
-
-            }else{
-                System.out.println("Fehler idk");
+        for (int i = 1; i < g.getNodeCount(); i++) {
+            Node u = sigma.get(i);
+            List<Node> X = u.neighborNodes().filter(v -> getKeyByValue(sigma, u) < getKeyByValue(sigma, v)).collect(Collectors.toList());
+            if (!X.isEmpty()) {
+                Node w = X.stream().min(Comparator.comparingInt((Node n) -> getKeyByValue(sigma, n))).get();
+                X.remove(w);
+                List<Node> newList = new ArrayList<>();
+                newList.addAll(X);
+                A.put(w, newList);
             }
 
+            u.neighborNodes().forEach(n -> {
+                if (A.containsKey(u)) {
+                    A.get(u).remove(n);
+                }
+            });
+            if (A.containsKey(u)) {
+                if (!A.get(u).isEmpty()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 
+
+    /**
+     * Returns the graph with added color attributes for minimal colors.
+     * @param graph input graph
+     * @return Graph colored minimally
+     */
+    public static Graph colorChordaleGraph(Graph graph, Map<Integer, Node> sigma){
+        if(graph.getNodeCount()==0){
+            throw new IllegalArgumentException("Graph ist leer");
+        }
+        if(sigma.isEmpty()){
+            throw new IllegalArgumentException("Eliminations schema ist leer");
+        }
+
+
+        //sigma.get(sigma.size()).setAttribute("color","1");
+        graph.getNode(sigma.get(sigma.size()).getId()).setAttribute("color","1");
+
+        for (int i = sigma.size()-1; i > 0; i--) {
+            Node currentNode = sigma.get(i);
+            List<Integer> usedColors = new ArrayList<>();
+
+            currentNode.neighborNodes().forEach(n -> {
+                if (n.getAttribute("color") != null){
+                    usedColors.add(Integer.parseInt(String.valueOf(n.getAttribute("color"))));
+                }
+            });
+            //Color first not used color
+            Integer counter = 1;
+            while (true){
+                if (!(usedColors.contains(counter))){
+                    currentNode.setAttribute("color",counter);
+                    break;
+                }
+                counter++;
+            }
+        }
+        return graph;
+    }
+
+    /**
+     * Returns chromatic number for given graph and given perfect elimination scheme
+     * @param graph,sigma given Graph, given elimination scheme
+     * @return chromatic number
+     */
+    public static Integer getChromaticNumber(Graph graph, Map<Integer, Node> sigma){
+        if(graph.getNodeCount()==0){
+            throw new IllegalArgumentException("Graph ist leer");
+        }
+        if (sigma.isEmpty()){
+            throw new IllegalArgumentException("Eliminations schema ist leer");
+        }
+
+        Graph g = Graphs.clone(graph);
+
+        if (testElimination(g,sigma)){
+            colorChordaleGraph(g,sigma);
+            //Farben zählen
+            Optional<Node> maxNodeOpt = g.nodes().max(Comparator.comparingInt((Node n) -> Integer.parseInt(String.valueOf(n.getAttribute("color")))));
+            if(maxNodeOpt.isPresent()){
+                Node maxNode = maxNodeOpt.get();
+                return Integer.parseInt(String.valueOf(maxNode.getAttribute("color")));
+            }else{
+                return -1;
+            }
+        }else{
+            throw new IllegalArgumentException("Eliminationsschema nicht korrekt");
         }
     }
 
+    /**
+     * Generates simple chordal graph with nodeAmount nodes
+     * @param nodeAmount amount of nodes in generated Graph
+     * @return generated graph
+     */
+    public static Graph generateChordalGraph(Integer nodeAmount){
+        Graph g = new DefaultGraph("G");
+        if(nodeAmount==0){
+            return g;
+        }
 
+        Random random = new Random();
+        //Add first node
+        g.addNode("v1");
 
+        if(nodeAmount>1){
+            g.addNode("v2");
+            g.addEdge("v1v2","v1","v2");
+
+            for (int i = 2; i < nodeAmount; i++) {
+                int randInt = random.nextInt(2);
+                if(randInt==1){
+                    int nodeCount = g.getNodeCount();
+                    int newNodeCount = nodeCount+1;
+                    int randNodeInt = random.nextInt(nodeCount);
+                    Node v = g.getNode(randNodeInt); // Indizes bei 0?
+                    g.addNode("v"+newNodeCount);
+                    g.addEdge(v.getId()+"v"+newNodeCount,v.getId(),"v"+newNodeCount);
+                }else{
+                    int edgeCount = g.getEdgeCount();
+                    int newEdgeCount = edgeCount+1;
+                    int randEdgeInt = random.nextInt(edgeCount);
+                    Edge vw = g.getEdge(randEdgeInt);
+                    Node v = vw.getSourceNode();
+                    Node w = vw.getTargetNode();
+
+                    Node u = g.addNode("v"+(g.getNodeCount()+1));
+                    g.addEdge(v.getId()+u.getId(),v,u);
+                    g.addEdge(w.getId()+u.getId(),w,u);
+                }
+            }
+        }
+        return g;
+    }
+
+    public static Graph generateCompleteGraph(int nodeAmount){
+        Graph g = new DefaultGraph("G");
+
+        for(int i = 1; i <= nodeAmount; i++) {
+            g.addNode("v"+i);
+        }
+
+        g.nodes().forEach(n -> {
+            for (int i = 1; i <= nodeAmount; i++) {
+                if (!(("v" + i).equals(n.getId()))){
+                    if (g.getEdge(n.getId()+"v"+i)==null && g.getEdge("v"+i+n.getId())==null){
+                        g.addEdge(n.getId()+"v"+i,n.getId(),"v"+i);
+                    }
+                }
+            }
+        });
+        return g;
+    }
+    /**
+     * Hilfsmethode!
+     * Returns first matched key from input value
+     *
+     * @param map   map to search
+     * @param value value to search matched key
+     * @return first matched key
+     */
+    public static <T, E> T getKeyByValue(Map<T, E> map, E value) {
+        for (Map.Entry<T, E> entry : map.entrySet()) {
+            if (Objects.equals(value, entry.getValue())) {
+                return entry.getKey();
+            }
+        }
+        throw new NullPointerException();
+    }
 }
