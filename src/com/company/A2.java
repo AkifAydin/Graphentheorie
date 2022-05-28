@@ -7,6 +7,7 @@ import org.graphstream.graph.implementations.*;
 import java.util.ArrayList;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 
@@ -84,7 +85,7 @@ public class A2 {
 
             int finalI = i;
             u.neighborNodes().forEach((Node n) -> {
-                if (n.getAttribute("marke") != "") { // TODO: bei anderen !=
+                if (n.getAttribute("marke") != "") {
                     return;
                 }
                 if (n.getAttribute("label") == "0"){
@@ -93,7 +94,8 @@ public class A2 {
                 }
                 n.setAttribute("label", n.getAttribute("label") + String.valueOf(finalI));
             });
-            unnumeriert = unnumeriert.stream().sorted(Comparator.comparing(n -> Integer.parseInt((String) n.getAttribute("label")))).collect(Collectors.toList());
+            //Long da bei vollständigen Graphen sehr viele Kanten entstehen
+            unnumeriert = unnumeriert.stream().sorted(Comparator.comparing(n -> Long.parseLong((String) n.getAttribute("label")))).collect(Collectors.toList());
             Collections.reverse(unnumeriert);
             if (!unnumeriert.isEmpty()) {
                 u = unnumeriert.get(0);
@@ -160,24 +162,27 @@ public class A2 {
             throw new IllegalArgumentException("Eliminations schema ist leer");
         }
 
-
+        if(!testElimination(graph, sigma)){
+            throw new IllegalArgumentException("Graph ist nicht chordal");
+        }
         //sigma.get(sigma.size()).setAttribute("color","1");
         graph.getNode(sigma.get(sigma.size()).getId()).setAttribute("color","1");
 
         for (int i = sigma.size()-1; i > 0; i--) {
             Node currentNode = sigma.get(i);
-            List<Integer> usedColors = new ArrayList<>();
+            List<String> usedColors = new ArrayList<>();
 
             currentNode.neighborNodes().forEach(n -> {
-                if (n.getAttribute("color") != null){
-                    usedColors.add(Integer.parseInt(String.valueOf(n.getAttribute("color"))));
+                if (graph.getNode(n.getId()).getAttribute("color") != null){
+                    usedColors.add(String.valueOf(graph.getNode(n.getId()).getAttribute("color")));
                 }
             });
             //Color first not used color
-            Integer counter = 1;
+            int counter = 1;
             while (true){
-                if (!(usedColors.contains(counter))){
-                    currentNode.setAttribute("color",counter);
+                if (!(usedColors.contains(""+counter))){
+                    //System.out.println("Counter: " + counter + " usedColors: " + usedColors);
+                    graph.getNode(currentNode.getId()).setAttribute("color",""+counter);
                     break;
                 }
                 counter++;
@@ -202,9 +207,10 @@ public class A2 {
         Graph g = Graphs.clone(graph);
 
         if (testElimination(g,sigma)){
-            colorChordaleGraph(g,sigma);
+            Graph gColored = colorChordaleGraph(g,sigma);
             //Farben zählen
-            Optional<Node> maxNodeOpt = g.nodes().max(Comparator.comparingInt((Node n) -> Integer.parseInt(String.valueOf(n.getAttribute("color")))));
+            Optional<Node> maxNodeOpt = gColored.nodes().max(Comparator.comparingInt(
+                    (Node n) -> Integer.parseInt(String.valueOf(n.getAttribute("color")))));
             if(maxNodeOpt.isPresent()){
                 Node maxNode = maxNodeOpt.get();
                 return Integer.parseInt(String.valueOf(maxNode.getAttribute("color")));
@@ -294,5 +300,65 @@ public class A2 {
             }
         }
         throw new NullPointerException();
+    }
+
+    /**
+     * Hilfsmethode!
+     * Looks for a simplicial node to start the perfect elimination with.
+     * @param g chordal graph
+     * @return first simplicial node found
+     */
+    public static Node getSimplizialStartingNode(Graph g){
+        List<Node> startingNodeList = new ArrayList<>();
+        AtomicBoolean foundNotConnectedNode = new AtomicBoolean(false);
+        for (int i = 0; i < g.getNodeCount(); i++) {
+            //get random node
+            Node currentNode = g.getNode(i);
+            currentNode.neighborNodes().forEach(v -> {
+                currentNode.neighborNodes().forEach(u -> {
+                    if (v != u) {
+                        if (!v.neighborNodes().toList().contains(u)) {
+                            foundNotConnectedNode.set(true);
+                        }
+                    }
+                });
+            });
+            if (!foundNotConnectedNode.get()) {
+                startingNodeList.add(currentNode);
+                break;
+            }
+            foundNotConnectedNode.set(false);
+        }
+        if(startingNodeList.isEmpty()){
+            throw new IllegalArgumentException("Eingegebener Graph nicht chordal");
+        }
+        return startingNodeList.get(0);
+    }
+
+
+    /**
+     * Hilfsmethode!
+     * Generiert einen Baum mit n Nodes und zufälliger Struktur
+     * @param n
+     * @return
+     */
+    public static Graph generateTree(int n){
+        Graph result = new DefaultGraph("G");
+        Random rand = new Random();
+        for (int i = 1; i <= n; i++) {
+            result.addNode("v"+i).setAttribute("label",""+i);
+            Node newNode = result.getNode("v"+i);
+            if(i>1){
+                //Es darf nicht die neuste Node ausgewählt werden also i-1,
+                // dann wird noch 1 addiert, da die nextInt Methode bei 0 anfängt
+                int randInt = rand.nextInt(i-1)+1;
+                //System.out.println(randInt);
+                Node randomNode = result.getNode("v"+randInt);
+                if (result.getEdge(""+i+(randInt))==null){
+                    result.addEdge("v"+i+"v"+(randInt),newNode,randomNode);
+                }
+            }
+        }
+        return result;
     }
 }
