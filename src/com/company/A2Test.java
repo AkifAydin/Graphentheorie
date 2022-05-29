@@ -112,13 +112,13 @@ public class A2Test {
         //Check node count
         for (int i = 0; i < 10; i++) {
             int randint = random.nextInt(100);
-            Graph g = A2.generateCompleteGraph(randint);
+            Graph g = A2.generateChordalGraph(randint);
             int nodes = g.getNodeCount();
             Assert.assertEquals(randint, nodes);
         }
         //Check is chordal
         for (int i = 0; i < 10; i++) {
-            int randint = random.nextInt(100);
+            int randint = random.nextInt(100)+1;
             Graph g = A2.generateChordalGraph(randint);
             Node startingNode = A2.getSimplizialStartingNode(g);
 

@@ -58,15 +58,12 @@ public class A2 {
      * @return Liste mit Nodes
      */
     public static Map<Integer, Node> createPerfectElimination(Graph graph, Node startingNode) {
-
         if(startingNode==null){
             throw new IllegalArgumentException("StartingNode existiert nicht");
         }
         if(graph.getNode(startingNode.getId())==null){
             throw new IllegalArgumentException("StartingNode wurde nicht gefunden");
         }
-
-
         // Initialize
         Graph g = Graphs.clone(graph);
         Map<Integer, Node> sigma = new HashMap<>();
@@ -75,9 +72,9 @@ public class A2 {
         // Prepare nodes
         g.nodes().forEach(n -> n.setAttribute("label", "0"));
         g.nodes().forEach(n -> n.setAttribute("marke", ""));
-
         Node u = g.getNode(startingNode.getId());
 
+        // Iterate over every node; algorithm 7.1 of KN book
         for (int i = g.getNodeCount(); i > 0; i--) {
             sigma.put(i, graph.getNode(u.getId()));
             unnumeriert.remove(u);
@@ -85,17 +82,21 @@ public class A2 {
 
             int finalI = i;
             u.neighborNodes().forEach((Node n) -> {
+                //if marke is empty, return to next lambda run
                 if (n.getAttribute("marke") != "") {
                     return;
                 }
+                //if label of node is still set to 0 set it to i and return to next lambda run
                 if (n.getAttribute("label") == "0"){
                     n.setAttribute("label", String.valueOf(finalI));
                     return;
                 }
+                //else add i to label of node
                 n.setAttribute("label", n.getAttribute("label") + String.valueOf(finalI));
             });
-            //Long da bei vollständigen Graphen sehr viele Kanten entstehen
+            //compare nodes via long comparison of labels
             unnumeriert = unnumeriert.stream().sorted(Comparator.comparing(n -> Long.parseLong((String) n.getAttribute("label")))).collect(Collectors.toList());
+            //order nodes correctly by reversing
             Collections.reverse(unnumeriert);
             if (!unnumeriert.isEmpty()) {
                 u = unnumeriert.get(0);
@@ -114,31 +115,29 @@ public class A2 {
         if(sigma.size()!=g.getNodeCount()){
             return false;
         }
-
-
-        //Graph ga = Graphs.clone(graph);
+        //put every node -> emptyList into HashMap A
         Map<Node, List<Node>> A = new HashMap<>();
-
         g.nodes().forEach(n -> {
             A.put(n, new ArrayList<>());
         });
-
+        //iterate over every node; algorithm 4.1 of KN book
         for (int i = 1; i < g.getNodeCount(); i++) {
             Node u = sigma.get(i);
+            //X = all neighbors of u with sigma(u) < sigma(v)
             List<Node> X = u.neighborNodes().filter(v -> getKeyByValue(sigma, u) < getKeyByValue(sigma, v)).collect(Collectors.toList());
             if (!X.isEmpty()) {
+                //min node w of X with sigma(w)->min
                 Node w = X.stream().min(Comparator.comparingInt((Node n) -> getKeyByValue(sigma, n))).get();
                 X.remove(w);
-                List<Node> newList = new ArrayList<>();
-                newList.addAll(X);
-                A.put(w, newList);
+                A.put(w, X);
             }
-
+            //remove all neighbors of u if A already has u as key
             u.neighborNodes().forEach(n -> {
                 if (A.containsKey(u)) {
                     A.get(u).remove(n);
                 }
             });
+            //return false if A has not empty value for node u
             if (A.containsKey(u)) {
                 if (!A.get(u).isEmpty()) {
                     return false;
@@ -165,13 +164,14 @@ public class A2 {
         if(!testElimination(graph, sigma)){
             throw new IllegalArgumentException("Graph ist nicht chordal");
         }
-        //sigma.get(sigma.size()).setAttribute("color","1");
+        //set color attribute of first node to 1
         graph.getNode(sigma.get(sigma.size()).getId()).setAttribute("color","1");
 
         for (int i = sigma.size()-1; i > 0; i--) {
             Node currentNode = sigma.get(i);
             List<String> usedColors = new ArrayList<>();
 
+            //put all already used colors into usedColors
             currentNode.neighborNodes().forEach(n -> {
                 if (graph.getNode(n.getId()).getAttribute("color") != null){
                     usedColors.add(String.valueOf(graph.getNode(n.getId()).getAttribute("color")));
@@ -181,7 +181,6 @@ public class A2 {
             int counter = 1;
             while (true){
                 if (!(usedColors.contains(""+counter))){
-                    //System.out.println("Counter: " + counter + " usedColors: " + usedColors);
                     graph.getNode(currentNode.getId()).setAttribute("color",""+counter);
                     break;
                 }
@@ -208,7 +207,7 @@ public class A2 {
 
         if (testElimination(g,sigma)){
             Graph gColored = colorChordaleGraph(g,sigma);
-            //Farben zählen
+            //get node with max color
             Optional<Node> maxNodeOpt = gColored.nodes().max(Comparator.comparingInt(
                     (Node n) -> Integer.parseInt(String.valueOf(n.getAttribute("color")))));
             if(maxNodeOpt.isPresent()){
@@ -228,6 +227,10 @@ public class A2 {
      * @return generated graph
      */
     public static Graph generateChordalGraph(Integer nodeAmount){
+        if(nodeAmount<0){
+            throw new IllegalArgumentException("Eigegebene nodeAmount zu klein");
+        }
+
         Graph g = new DefaultGraph("G");
         if(nodeAmount==0){
             return g;
@@ -242,8 +245,10 @@ public class A2 {
             g.addEdge("v1v2","v1","v2");
 
             for (int i = 2; i < nodeAmount; i++) {
+                //randInt to determine if we add 3 node circle or add node onto existing node
                 int randInt = random.nextInt(2);
                 if(randInt==1){
+                    //add node with edge to random node
                     int nodeCount = g.getNodeCount();
                     int newNodeCount = nodeCount+1;
                     int randNodeInt = random.nextInt(nodeCount);
@@ -251,8 +256,8 @@ public class A2 {
                     g.addNode("v"+newNodeCount);
                     g.addEdge(v.getId()+"v"+newNodeCount,v.getId(),"v"+newNodeCount);
                 }else{
+                    //get random edge and connect both nodes to new node
                     int edgeCount = g.getEdgeCount();
-                    int newEdgeCount = edgeCount+1;
                     int randEdgeInt = random.nextInt(edgeCount);
                     Edge vw = g.getEdge(randEdgeInt);
                     Node v = vw.getSourceNode();
@@ -268,12 +273,17 @@ public class A2 {
     }
 
     public static Graph generateCompleteGraph(int nodeAmount){
+        if(nodeAmount<0){
+            throw new IllegalArgumentException("Eingegebene nodeAmount zu klein");
+        }
+
         Graph g = new DefaultGraph("G");
 
+        //add nodeAmount nodes
         for(int i = 1; i <= nodeAmount; i++) {
             g.addNode("v"+i);
         }
-
+        //connect every node with every other node
         g.nodes().forEach(n -> {
             for (int i = 1; i <= nodeAmount; i++) {
                 if (!(("v" + i).equals(n.getId()))){
@@ -312,17 +322,20 @@ public class A2 {
         List<Node> startingNodeList = new ArrayList<>();
         AtomicBoolean foundNotConnectedNode = new AtomicBoolean(false);
         for (int i = 0; i < g.getNodeCount(); i++) {
-            //get random node
             Node currentNode = g.getNode(i);
             currentNode.neighborNodes().forEach(v -> {
                 currentNode.neighborNodes().forEach(u -> {
                     if (v != u) {
                         if (!v.neighborNodes().toList().contains(u)) {
+                            //if a neighborNode v is found where neighborNode u
+                            // is not in currentNode's neighbors, current node cannot be simplicial
                             foundNotConnectedNode.set(true);
                         }
                     }
                 });
             });
+            //if no non connecting nodes are found within currentNode's neighbors
+            // the node is simplicial and we can stop
             if (!foundNotConnectedNode.get()) {
                 startingNodeList.add(currentNode);
                 break;
@@ -352,7 +365,6 @@ public class A2 {
                 //Es darf nicht die neuste Node ausgewählt werden also i-1,
                 // dann wird noch 1 addiert, da die nextInt Methode bei 0 anfängt
                 int randInt = rand.nextInt(i-1)+1;
-                //System.out.println(randInt);
                 Node randomNode = result.getNode("v"+randInt);
                 if (result.getEdge(""+i+(randInt))==null){
                     result.addEdge("v"+i+"v"+(randInt),newNode,randomNode);
