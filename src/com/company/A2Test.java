@@ -85,7 +85,7 @@ public class A2Test {
         }
         //Test trees
         for (int i = 0; i < 10; i++) {
-            Graph tree = A2.generateTree(random.nextInt(15) + 1);
+            Graph tree = GraphMethods.generateTree(random.nextInt(15) + 1);
             Node startingNode = A2.getSimplizialStartingNode(tree);
             Integer chromaticTreeNumber = A2.getChromaticNumber(tree, A2.createPerfectElimination(tree, startingNode));
             Integer expectedChromaticNumber = 1;
@@ -99,11 +99,6 @@ public class A2Test {
         }
     }
 
-
-    @Test
-    public void checkColorAndChromaticNumber() {
-
-    }
 
 
     @Test

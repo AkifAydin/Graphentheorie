@@ -33,26 +33,25 @@ public class A2 {
         g.addEdge("de", "d", "e");
         //bedac
 
-        System.out.println(createPerfectElimination(g, g.getNode("b")));
-        //{1=e, 2=d, 3=c, 4=a, 5=b}
+//        System.out.println(createPerfectElimination(g, g.getNode("b")));
+//        //{1=e, 2=d, 3=c, 4=a, 5=b}
+//
+//        System.out.println(testElimination(g, createPerfectElimination(g, g.getNode("b"))));
+//
+//        List<Node> nodes = colorChordaleGraph(g, createPerfectElimination(g, g.getNode("b"))).nodes().toList();
+//        nodes.forEach(n -> {
+//            System.out.println("Node: "+ n.getId() + "   Color: " + n.getAttribute("color"));
+//        });
+//        System.out.println("Anzahl Farben: " + getChromaticNumber(g,createPerfectElimination(g, g.getNode("b"))));
 
-        System.out.println(testElimination(g, createPerfectElimination(g, g.getNode("b"))));
 
-        List<Node> nodes = colorChordaleGraph(g, createPerfectElimination(g, g.getNode("b"))).nodes().toList();
-        nodes.forEach(n -> {
-            System.out.println("Node: "+ n.getId() + "   Color: " + n.getAttribute("color"));
-        });
-        System.out.println("Anzahl Farben: " + getChromaticNumber(g,createPerfectElimination(g, g.getNode("b"))));
-
-
-        //Graph graph = generateCompleteGraph(50);
-        //graph.display();
+        Graph graph = generateCompleteGraph(50);
+        graph.display();
     }
 
 
     /**
-     * Berechnet ein perfektes Eliminationsschema mithilfe des lex-bfs
-     *
+     * Calculates perfect elimination Scheme based on input Graph and startingNode
      * @param graph        gegebener Graph
      * @param startingNode node welche Anfagns entfernt werden soll
      * @return Liste mit Nodes
@@ -117,9 +116,7 @@ public class A2 {
         }
         //put every node -> emptyList into HashMap A
         Map<Node, List<Node>> A = new HashMap<>();
-        g.nodes().forEach(n -> {
-            A.put(n, new ArrayList<>());
-        });
+        g.nodes().forEach(n -> A.put(n, new ArrayList<>()));
         //iterate over every node; algorithm 4.1 of KN book
         for (int i = 1; i < g.getNodeCount(); i++) {
             Node u = sigma.get(i);
@@ -160,10 +157,10 @@ public class A2 {
         if(sigma.isEmpty()){
             throw new IllegalArgumentException("Eliminations schema ist leer");
         }
-
         if(!testElimination(graph, sigma)){
             throw new IllegalArgumentException("Graph ist nicht chordal");
         }
+
         //set color attribute of first node to 1
         graph.getNode(sigma.get(sigma.size()).getId()).setAttribute("color","1");
 
@@ -191,7 +188,7 @@ public class A2 {
     }
 
     /**
-     * Returns chromatic number for given graph and given perfect elimination scheme
+     * Returns chromatic number for given chordal graph and given perfect elimination scheme
      * @param graph,sigma given Graph, given elimination scheme
      * @return chromatic number
      */
@@ -272,6 +269,11 @@ public class A2 {
         return g;
     }
 
+    /**
+     * Returns complete graph with given nodeAmount
+     * @param nodeAmount
+     * @return complete Graph
+     */
     public static Graph generateCompleteGraph(int nodeAmount){
         if(nodeAmount<0){
             throw new IllegalArgumentException("Eingegebene nodeAmount zu klein");
@@ -346,31 +348,5 @@ public class A2 {
             throw new IllegalArgumentException("Eingegebener Graph nicht chordal");
         }
         return startingNodeList.get(0);
-    }
-
-
-    /**
-     * Hilfsmethode!
-     * Generiert einen Baum mit n Nodes und zufälliger Struktur
-     * @param n
-     * @return
-     */
-    public static Graph generateTree(int n){
-        Graph result = new DefaultGraph("G");
-        Random rand = new Random();
-        for (int i = 1; i <= n; i++) {
-            result.addNode("v"+i).setAttribute("label",""+i);
-            Node newNode = result.getNode("v"+i);
-            if(i>1){
-                //Es darf nicht die neuste Node ausgewählt werden also i-1,
-                // dann wird noch 1 addiert, da die nextInt Methode bei 0 anfängt
-                int randInt = rand.nextInt(i-1)+1;
-                Node randomNode = result.getNode("v"+randInt);
-                if (result.getEdge(""+i+(randInt))==null){
-                    result.addEdge("v"+i+"v"+(randInt),newNode,randomNode);
-                }
-            }
-        }
-        return result;
     }
 }
