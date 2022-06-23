@@ -109,26 +109,27 @@ public class A3 {
             AtomicReference<List<Node>> minPermutation = new AtomicReference<>();
             AtomicReference<Float> minWeightCost = new AtomicReference<>(Float.MAX_VALUE);
             AtomicReference<Float> weightCost = new AtomicReference<>(0f);
+            AtomicReference<List<Node>> currentNewW = new AtomicReference<>();
             permutations.forEach((List<Node> permutation) -> {
                 weightCost.set(0f);
                 weightCost.updateAndGet(v -> v + c.get(startingNode.getEdgeBetween(permutation.get(0))));
-                for (int i = 0; i < permutation.size() - 2; i++) {
+                for (int i = 0; i < permutation.size() - 1; i++) {
                     int finalI = i;
-
                     weightCost.updateAndGet(v -> v + c.get(permutation.get(finalI).getEdgeBetween(permutation.get(finalI + 1))));
                 }
 
                 weightCost.updateAndGet(v -> v + c.get(permutation.get(permutation.size() - 1).getEdgeBetween(startingNode)));
                 minPermutation.set(permutation);
                 System.out.println("Starting Node: " + startingNode+ "  Permutation: " + permutation+ " with weight " + weightCost.get());
+                if (weightCost.get() < minWeightCost.get()) {
+                    currentNewW.set(new ArrayList<>());
+                    minWeightCost.set(weightCost.get());
+                    currentNewW.get().add(startingNode);
+                    currentNewW.get().addAll(minPermutation.get());
+                    System.out.println("Weight: " + weightCost.get());
+                }
             });
-            if (weightCost.get() < minWeightCost.get()) {
-                W = new ArrayList<>();
-                minWeightCost.set(weightCost.get());
-                W.add(startingNode);
-                W.addAll(minPermutation.get());
-                System.out.println("Weight: " + weightCost.get());
-            }
+            W = currentNewW.get();
             System.out.println("W: " + W + " with weight " + minWeightCost.get());
             System.out.println();
         }
@@ -193,8 +194,12 @@ public class A3 {
         c.put(g.getEdge("CE"), 30f);
         c.put(g.getEdge("DE"), 50f);
 
-        System.out.println(nearestInsertion(g, c));
+     //   System.out.println(nearestInsertion(g, c));
 
+
+        Gitter gitter = new Gitter(g);
+        gitter.randomFill();
+        gitter.printNetz();
 
 /*
 
