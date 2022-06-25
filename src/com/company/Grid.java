@@ -3,9 +3,8 @@ package com.company;
 import org.graphstream.graph.*;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
-public class Gitter {
+public class Grid {
 
     private List<List<Node>> gitterNetz;
     private Graph graph;
@@ -14,7 +13,7 @@ public class Gitter {
 
 
 
-    public Gitter(Graph g){
+    public Grid(Graph g){
         this.graph = g;
         this.gittersize = (int)Math.ceil(Math.sqrt(g.getNodeCount()));
         this.gitterNetz = new ArrayList<>(new ArrayList<>());
@@ -25,7 +24,6 @@ public class Gitter {
                 gitterNetz.get(i).add(null);
             }
         }
-
     }
 
     public void randomFill(){

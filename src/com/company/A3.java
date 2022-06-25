@@ -1,31 +1,31 @@
 package com.company;
 
+import org.graphstream.algorithm.generator.FullGenerator;
 import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.DefaultGraph;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
 public class A3 {
 
     /**
-     * Returns minimal tree
+     * Returns minimal tree with the use of Prim algorithm
      *
      * @param g graph
      * @param c map Edge -> weight value
      * @return List of edges that represent the tree
      */
-    public static List<Edge> minimalerSpannbaum(Graph g, HashMap<Edge, Float> c) {
-        int randInt = new Random().nextInt(g.getNodeCount());
-        Node randomStartingNode = g.getNode(randInt);
+    public static List<Edge> minimalSpanningTree(Graph g, Map<Edge, Float> c) {
+        Node startingNode = g.getNode(0);
 
 
         List<Edge> ET = new ArrayList<>();
         List<Node> S = new ArrayList<>();
-        S.add(randomStartingNode);
+        S.add(startingNode);
 
 
         while (S != g.nodes().toList()) {
@@ -58,6 +58,22 @@ public class A3 {
         return ET;
     }
 
+    /**
+     * Returns the minmal tour of the graph via a List of nodes
+     * @param graph TSP graph with weights as map c
+     * @param c weight map
+     * @return List<Node>
+     */
+    public static List<Node> minimumSpanningTreeHeuristic(Graph graph, Map<Edge, Float> c){
+        List<Edge> minimalTree = minimalSpanningTree(graph, c);
+        List<Node> eulerTour = generateEulerTour(minimalTree);
+
+        removeDoubledNodes(eulerTour);
+
+
+        return eulerTour;
+    }
+
 
     /**
      * returns the shortest round trip W
@@ -67,11 +83,14 @@ public class A3 {
      * @return the shortest round trip W
      */
     public static List<Node> nearestInsertion(Graph g, Map<Edge, Float> c) {
+        if((g.getNodeCount() * (g.getNodeCount() - 1) / 2)!=g.getEdgeCount()){
+            throw new IllegalArgumentException("The given graph is not full");
+        }
+
+
         List<Node> W = new ArrayList<>();
 
-        //Random Startingpoint
-        int randNodeIndex = new Random().nextInt(g.getNodeCount() + 1);
-        Node startingNode = g.getNode(randNodeIndex);
+        Node startingNode = g.getNode(0);
 
         List<Node> usedNodes = new ArrayList<>();
 
@@ -86,13 +105,11 @@ public class A3 {
             List<Node> finalW = W;
             g.nodes().forEach((Node v) -> {
                 finalW.forEach((Node u) -> {
-                    if (u != v && v!=startingNode && !finalW.contains(v)) {
+                    if (u != v && v != startingNode && !finalW.contains(v)) {
                         // node u from circle W,  node v potential nearest node from graph
                         Edge edgeUV = u.getEdgeBetween(v);
                         Float edgeWeight = c.get(edgeUV);
 
-                        System.out.println("Nodes -> u: " + u + " v: " + v + "   Edge:" + edgeUV + " with weight: " + edgeWeight);
-                        System.out.println();
                         if (edgeWeight < minD.get()) {
                             minD.set(edgeWeight);
                             minNode[0] = v;
@@ -101,7 +118,6 @@ public class A3 {
                 });
             });
             W.add(minNode[0]);
-            System.out.println("W: " + W + " minNode: " + minNode[0]);
 
             //min permutation
             List<Node> circleWithoutStartingNode = W.subList(1, W.size());
@@ -120,30 +136,57 @@ public class A3 {
 
                 weightCost.updateAndGet(v -> v + c.get(permutation.get(permutation.size() - 1).getEdgeBetween(startingNode)));
                 minPermutation.set(permutation);
-                System.out.println("Starting Node: " + startingNode+ "  Permutation: " + permutation+ " with weight " + weightCost.get());
                 if (weightCost.get() < minWeightCost.get()) {
                     currentNewW.set(new ArrayList<>());
                     minWeightCost.set(weightCost.get());
                     currentNewW.get().add(startingNode);
                     currentNewW.get().addAll(minPermutation.get());
-                    System.out.println("Weight: " + weightCost.get());
                 }
             });
             W = currentNewW.get();
-            System.out.println("W: " + W + " with weight " + minWeightCost.get());
-            System.out.println();
         }
-
         W.add(startingNode);
         return W;
     }
 
 
     /**
+     * Generates a complete Graph with a weight Map   edge ->  float
+     * @param n amount of nodes
+     * @return map of Graph -> weightMap
+     */
+    public static Map<Graph, Map<Edge,Float>> generateCompleteGraphWithTSP(int n) {
+        Graph g = new DefaultGraph("TSPGraph");
+        Map<Graph, Map<Edge,Float>> result = new HashMap<>();
+
+        FullGenerator graphGenerator = new FullGenerator();
+        graphGenerator.addSink(g);
+        graphGenerator.begin();
+
+        for (int i = 0; i < n; i++) {
+            graphGenerator.nextEvents();
+        }
+        graphGenerator.end();
+
+        Grid grid = new Grid(g);
+        grid.randomFill();
+        Map<Edge, Float> weightMap = grid.calculateManhattan();
+
+        g.edges().forEach((Edge e) -> {
+            e.setAttribute("weight", weightMap.get(e));
+        });
+        result.put(g,weightMap);
+        return result;
+    }
+
+
+    /**
+     * Helper method!
+     * Generates stream of Lists for every possible permutation/order of nodes in a list
      * https://stackoverflow.com/questions/14132877/order-array-in-every-possible-sequence
      *
-     * @param input
-     * @return
+     * @param input list
+     * @return Stream of every possible list ordering
      */
     public static Stream<List<Node>> permutations(List<Node> input) {
         if (input.size() == 1) {
@@ -157,73 +200,130 @@ public class A3 {
                         .peek(l -> l.addFirst(first)));
     }
 
+    /**
+     * Overall method for generating an EulerTour by calling overloaded method with same name
+     * @param minimalTree
+     * @return
+     */
+    public static List<Node> generateEulerTour(List<Edge> minimalTree) {
+        System.out.println(minimalTree);
+        Graph tree = generateGraphFromEdgeList(minimalTree);
+       // generateEulerGraphFromTree(tree);
+        List<Node> eulerTour = new ArrayList<>();
+        List<Node> usedNodes = new ArrayList<>();
 
-    public static void main(String[] args) throws IOException {
-        System.setProperty("org.graphstream.ui", "swing");
-        Graph g = new DefaultGraph("g");
-
-        g.addNode("A");
-        g.addNode("B");
-        g.addNode("C");
-        g.addNode("D");
-        g.addNode("E");
-        //g.addNode("F");
-
-        g.addEdge("AB", "A", "B");
-        g.addEdge("AC", "A", "C");
-        g.addEdge("AD", "A", "D");
-        g.addEdge("AE", "A", "E");
-        g.addEdge("BE", "B", "E");
-        g.addEdge("BC", "B", "C");
-        g.addEdge("BD", "B", "D");
-        g.addEdge("CD", "C", "D");
-        g.addEdge("CE", "C", "E");
-        g.addEdge("DE", "D", "E");
+        generateEulerTour(tree.getNode(0), eulerTour, usedNodes);
 
 
-        Map<Edge, Float> c = new HashMap<>();
+        return eulerTour;
+    }
 
-        c.put(g.getEdge("AB"), 5f);
-        c.put(g.getEdge("AE"), 20f);
-        c.put(g.getEdge("AD"), 15f);
-        c.put(g.getEdge("AC"), 10f);
-        c.put(g.getEdge("BC"), 35f);
-        c.put(g.getEdge("BD"), 40f);
-        c.put(g.getEdge("BE"), 45f);
-        c.put(g.getEdge("CD"), 25f);
-        c.put(g.getEdge("CE"), 30f);
-        c.put(g.getEdge("DE"), 50f);
+    /**
+     * Overloaded method for recursively generating EulerTour
+     * @param currentNode
+     * @param eulerTour
+     * @param usedNodes
+     */
+    public static void generateEulerTour(Node currentNode, List<Node> eulerTour, List<Node> usedNodes) {
+        usedNodes.add(currentNode);
+        eulerTour.add(currentNode);
 
-     //   System.out.println(nearestInsertion(g, c));
-
-
-        Gitter gitter = new Gitter(g);
-        gitter.randomFill();
-        gitter.printNetz();
-
-/*
-
-        //FileSinkSVG fileSinkSVG = new FileSinkSVG();
-
-        //fileSinkSVG.writeAll(g, "test.svg");
-
-        HashMap<Edge, Float> c = new HashMap<>();
-
-        c.put(g.getEdge("AB"),1f);
-        c.put(g.getEdge("AC"),2f);
-        c.put(g.getEdge("AD"),7f);
-        c.put(g.getEdge("BE"),4f);
-        c.put(g.getEdge("BD"),6f);
-        c.put(g.getEdge("DE"),4f);
-        c.put(g.getEdge("DC"),3f);
-        c.put(g.getEdge("CF"),5f);
-        c.put(g.getEdge("EF"),2f);
-
-        List<Edge> spannbaum = minimalerSpannbaum(g,c);
-        System.out.println(spannbaum);
-        //g.display();
-*/
-
+        currentNode.neighborNodes().forEach((Node neighbor) -> {
+            if (!usedNodes.contains(neighbor)) {
+                generateEulerTour(neighbor, eulerTour, usedNodes);
+                eulerTour.add(currentNode);
+            }
+        });
 
     }
+
+    /**
+     * Helper method!
+     * Removes all nodes from list except their first appearance and excluding the last node.
+     * @param eulerTour euler tour with doubled nodes
+     * @return List of nodes
+     */
+    public static List<Node> removeDoubledNodes(List<Node> eulerTour){
+
+        List<Node> usedNodes = new ArrayList<>();
+        Node lastNode = eulerTour.get(eulerTour.size()-1);
+
+        int counter = 0;
+        while (counter < eulerTour.size()) {
+            Node n = eulerTour.get(counter);
+            if (!usedNodes.contains(n)) {
+                usedNodes.add(n);
+                counter++;
+            } else {
+                eulerTour.remove(counter);
+            }
+        }
+        eulerTour.add(lastNode);
+        return eulerTour;
+    }
+
+    /**
+     * Helper method!
+     * Destructively transforms given tree into eulerGraph by doubling all edges
+     * @param tree
+     */
+    public static void generateEulerGraphFromTree(Graph tree) {
+        tree.edges().forEach((Edge e) -> {
+            Node sourceNode = e.getSourceNode();
+            Node targetNode = e.getTargetNode();
+
+            tree.addEdge(e.getId() + "2", sourceNode.getId(), targetNode.getId());
+        });
+    }
+
+    /**
+     * Helper method!
+     * Takes a List of edges and returns a Graph with all edges and nodes of the edges added
+     * @param edges
+     * @return
+     */
+    public static Graph generateGraphFromEdgeList(List<Edge> edges) {
+        Graph g = new DefaultGraph("tree");
+
+        for (Edge e : edges) {
+            Node sourceNode = e.getSourceNode();
+            Node targetNode = e.getTargetNode();
+
+            if(g.getNode(sourceNode.getId())==null) {
+                g.addNode(sourceNode.getId());
+            }
+            if(g.getNode(targetNode.getId())==null) {
+                g.addNode(targetNode.getId());
+            }
+
+            g.addEdge(sourceNode.getId() + targetNode.getId(), sourceNode.getId(), targetNode.getId());
+        }
+        return g;
+    }
+
+    /**
+     * Hepler method!
+     * Returns weight of given circle, ignores connection of last node with first node
+     * @param g
+     * @param circle
+     * @param c
+     * @return
+     */
+    public static Float getWeightOfCircle(Graph g, List<Node> circle, Map<Edge, Float> c){
+        Float counter = 0f;
+        for (int i = 0; i < circle.size()-2; i++) {
+            Float currentWeight = c.get(g.getNode(circle.get(i).getId()).getEdgeBetween(g.getNode(circle.get(i+1).getId())));
+            counter+=currentWeight;
+        }
+        return counter;
+    }
+
+    public static Float getEdgesum(List<Edge> spanningTree, Map<Edge, Float> c){
+        Float counter = 0f;
+        for (int i = 0; i < spanningTree.size(); i++) {
+            counter+=c.get(spanningTree.get(i));
+        }
+        return counter;
+    }
+
 }
