@@ -9,14 +9,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.company.A3.*;
 
 public class A3Test {
+
+    private static final Integer NUMBEROFGRAPHS = 20;
 
     private static final Graph gClauck = new DefaultGraph("gClauck");
     private static final Map<Edge, Float> cCklauck = new HashMap<>();
@@ -28,7 +30,7 @@ public class A3Test {
     private static final Map<Edge, Float> k4ManualWeight = new HashMap<>();
 
     @BeforeAll
-    public static void generate(){
+    public static void generate() {
         gClauck.addNode("A");
         gClauck.addNode("B");
         gClauck.addNode("C");
@@ -45,7 +47,6 @@ public class A3Test {
         gClauck.addEdge("CD", "C", "D");
         gClauck.addEdge("CE", "C", "E");
         gClauck.addEdge("DE", "D", "E");
-
 
 
         cCklauck.put(gClauck.getEdge("AB"), 5f);
@@ -96,28 +97,28 @@ public class A3Test {
         k4Manual.addNode("C");
         k4Manual.addNode("D");
 
-        k4Manual.addEdge("AB","A","B");
-        k4Manual.addEdge("AC","A","C");
-        k4Manual.addEdge("AD","A","D");
+        k4Manual.addEdge("AB", "A", "B");
+        k4Manual.addEdge("AC", "A", "C");
+        k4Manual.addEdge("AD", "A", "D");
 
-        k4Manual.addEdge("BC","B","C");
-        k4Manual.addEdge("BD","B","D");
+        k4Manual.addEdge("BC", "B", "C");
+        k4Manual.addEdge("BD", "B", "D");
 
-        k4Manual.addEdge("CD","C","D");
+        k4Manual.addEdge("CD", "C", "D");
 
-        k4ManualWeight.put(k4Manual.getEdge("AB"),10f);
-        k4ManualWeight.put(k4Manual.getEdge("AC"),9f);
-        k4ManualWeight.put(k4Manual.getEdge("AD"),8f);
-        k4ManualWeight.put(k4Manual.getEdge("BC"),7f);
-        k4ManualWeight.put(k4Manual.getEdge("BD"),6f);
-        k4ManualWeight.put(k4Manual.getEdge("CD"),5f);
+        k4ManualWeight.put(k4Manual.getEdge("AB"), 10f);
+        k4ManualWeight.put(k4Manual.getEdge("AC"), 9f);
+        k4ManualWeight.put(k4Manual.getEdge("AD"), 8f);
+        k4ManualWeight.put(k4Manual.getEdge("BC"), 7f);
+        k4ManualWeight.put(k4Manual.getEdge("BD"), 6f);
+        k4ManualWeight.put(k4Manual.getEdge("CD"), 5f);
 
     }
 
     @Test
-    public void testMinimalSpanningTree(){
-        List<Edge> minSpannBaum = minimalSpanningTree(gClauck,cCklauck);
-        List<Edge> minSpannBaum2 = minimalSpanningTree(gClauck2,cCklauck2);
+    public void testMinimalSpanningTree() {
+        List<Edge> minSpannBaum = minimalSpanningTree(gClauck, cCklauck);
+        List<Edge> minSpannBaum2 = minimalSpanningTree(gClauck2, cCklauck2);
 
         System.out.println("Graph 1");
         System.out.println("Expected: AB AC AD AE");
@@ -129,47 +130,91 @@ public class A3Test {
 
 
     @Test
-    public void testNearestInsertion(){
+    public void testNearestInsertion() {
         List<Node> rundreise = nearestInsertion(gClauck, cCklauck);
-        List<Edge> minSpanningTree = minimalSpanningTree(gClauck,cCklauck);
-        System.out.println("\n\tGraph 1\nRundreise: " + rundreise + "\nRundreise: "+ getWeightOfCircle(gClauck,rundreise,cCklauck)
-                + "\tSpanning tree: "+ minSpanningTree +"\n"+
-                "Spannbaum: " + getEdgesum(minSpanningTree,cCklauck)+"\n");
-        assert(getWeightOfCircle(gClauck,rundreise,cCklauck)<=2*getEdgesum(minSpanningTree,cCklauck));
-
-
+        List<Edge> minSpanningTree = minimalSpanningTree(gClauck, cCklauck);
+        System.out.println("\n\tGraph 1\nRundreise: " + rundreise + "\nRundreise: " + getWeightOfCircle(gClauck, rundreise, cCklauck)
+                + "\tSpanning tree: " + minSpanningTree + "\n" +
+                "Spannbaum: " + getEdgesum(minSpanningTree, cCklauck) + "\n");
+        assert (getWeightOfCircle(gClauck, rundreise, cCklauck) <= 2 * getEdgesum(minSpanningTree, cCklauck));
 
 
         Assert.assertThrows(IllegalArgumentException.class, () -> nearestInsertion(gClauck2, cCklauck2));
 
         List<Node> rundreise3 = nearestInsertion(k4Manual, k4ManualWeight);
-        List<Edge> minSpanningTree3 = minimalSpanningTree(k4Manual,k4ManualWeight);
-        System.out.println("\n\tGraph 3\nRundreise: " + rundreise3 + "\nRundreise: "+ getWeightOfCircle(k4Manual,rundreise3,k4ManualWeight)
-                + " \tSpanning tree: "+ minSpanningTree3 +"\n"+
-                "Spannbaum: " + getEdgesum(minSpanningTree3,k4ManualWeight)+"\n");
-        assert(getWeightOfCircle(k4Manual,rundreise3,k4ManualWeight)<=2*getEdgesum(minSpanningTree3,k4ManualWeight));
+        List<Edge> minSpanningTree3 = minimalSpanningTree(k4Manual, k4ManualWeight);
+        System.out.println("\n\tGraph 3\nRundreise: " + rundreise3 + "\nRundreise: " + getWeightOfCircle(k4Manual, rundreise3, k4ManualWeight)
+                + " \tSpanning tree: " + minSpanningTree3 + "\n" +
+                "Spannbaum: " + getEdgesum(minSpanningTree3, k4ManualWeight) + "\n");
+        assert (getWeightOfCircle(k4Manual, rundreise3, k4ManualWeight) <= 2 * getEdgesum(minSpanningTree3, k4ManualWeight));
     }
 
     @Test
-    public void testMinimumSpanningTreeHeuristic(){
+    public void testMinimumSpanningTreeHeuristic() {
         List<Node> rundreise = minimumSpanningTreeHeuristic(gClauck, cCklauck);
-        List<Edge> minSpanningTree = minimalSpanningTree(gClauck,cCklauck);
+        List<Edge> minSpanningTree = minimalSpanningTree(gClauck, cCklauck);
         //System.out.println("Rundreise: " + rundreise);
-        System.out.println("\n\tGraph 1\nRundreise: " + rundreise + "\nRundreise: "+ getWeightOfCircle(gClauck,rundreise,cCklauck)
-                + "\tSpanning tree: "+ minSpanningTree +"\n"+
-                "Spannbaum: " + getEdgesum(minSpanningTree,cCklauck)+"\n");
-        assert(getWeightOfCircle(gClauck,rundreise,cCklauck)<=2*getEdgesum(minSpanningTree,cCklauck));
+        System.out.println("\n\tGraph 1\nRundreise: " + rundreise + "\nRundreise: " + getWeightOfCircle(gClauck, rundreise, cCklauck)
+                + "\tSpanning tree: " + minSpanningTree + "\n" +
+                "Spannbaum: " + getEdgesum(minSpanningTree, cCklauck) + "\n");
+        assert (getWeightOfCircle(gClauck, rundreise, cCklauck) <= 2 * getEdgesum(minSpanningTree, cCklauck));
 
 
         List<Node> rundreise2 = minimumSpanningTreeHeuristic(k4Manual, k4ManualWeight);
-        List<Edge> minSpanningTree2 = minimalSpanningTree(k4Manual,k4ManualWeight);
+        List<Edge> minSpanningTree2 = minimalSpanningTree(k4Manual, k4ManualWeight);
         //System.out.println("Rundreise: " + rundreise);
-        System.out.println("\n\tGraph 2\nRundreise: " + rundreise2 + "\nRundreise: "+ getWeightOfCircle(k4Manual,rundreise2,k4ManualWeight)
-                + "\tSpanning tree: "+ minSpanningTree2 +"\n"+
-                "Spannbaum: " + getEdgesum(minSpanningTree2,k4ManualWeight)+"\n");
-        assert(getWeightOfCircle(k4Manual,rundreise2,k4ManualWeight)<=2*getEdgesum(minSpanningTree2,k4ManualWeight));
+        System.out.println("\n\tGraph 2\nRundreise: " + rundreise2 + "\nRundreise: " + getWeightOfCircle(k4Manual, rundreise2, k4ManualWeight)
+                + "\tSpanning tree: " + minSpanningTree2 + "\n" +
+                "Spannbaum: " + getEdgesum(minSpanningTree2, k4ManualWeight) + "\n");
+        assert (getWeightOfCircle(k4Manual, rundreise2, k4ManualWeight) <= 2 * getEdgesum(minSpanningTree2, k4ManualWeight));
     }
 
 
+    @Test
+    public void testAlgorithmsWithGeneratedTSP() {
+        Float overallEuler = 0f;
+        Float overallNearest = 0f;
 
+        Float overallweightEuler = 0f;
+        Float overallweightNearest = 0f;
+        for (int i = 0; i < NUMBEROFGRAPHS; i++) {
+            long currentTimeMl;
+            Map<Graph, Map<Edge, Float>> graphAndMap = generateCompleteGraphWithTSP(500);
+            Graph tspGraph = graphAndMap.keySet().stream().toList().get(0);
+            Map<Edge, Float> weightmap = graphAndMap.get(tspGraph);
+
+            List<Edge> minSpannBaum = minimalSpanningTree(tspGraph,weightmap);
+            System.out.println("Weight von min spanning tree: " + getEdgesum(minSpannBaum,weightmap));
+            currentTimeMl = System.currentTimeMillis();
+
+
+            List<Node> rundreiseEuler = minimumSpanningTreeHeuristic(tspGraph,weightmap);
+            System.out.println("Berechnung für eulerTour: " + (System.currentTimeMillis() - currentTimeMl) + "\n");
+            overallEuler += System.currentTimeMillis() - currentTimeMl;
+
+
+            currentTimeMl = System.currentTimeMillis();
+            List<Node> rundreiseNearestInsertion = nearestInsertion(tspGraph,weightmap);
+            System.out.println("Berechnung für nearestInsertion: " + (System.currentTimeMillis() - currentTimeMl) + "\n");
+            overallNearest += System.currentTimeMillis() - currentTimeMl;
+
+
+            System.out.println("Testlauf Nummer: " + (i+1) + "\nRundreise Euler Tour:\n Länge: " + getWeightOfCircle(tspGraph,rundreiseEuler,weightmap)+ "\t" + rundreiseEuler +
+                    "\nRundreise nearest Insertion:\n Länge: " + getWeightOfCircle(tspGraph,rundreiseNearestInsertion,weightmap)+ "\t" + rundreiseNearestInsertion + "\n\n");
+
+            overallweightEuler+=getWeightOfCircle(tspGraph, rundreiseEuler,weightmap);
+            overallweightNearest+=getWeightOfCircle(tspGraph, rundreiseNearestInsertion,weightmap);
+
+        }
+
+        System.out.println("\n\n\nAverage eulerTour: " + overallEuler/NUMBEROFGRAPHS);
+        System.out.println("Average weight of euler: " + overallweightEuler/NUMBEROFGRAPHS);
+        System.out.println();
+
+        System.out.println("Average nearestInsertion: " + overallNearest/NUMBEROFGRAPHS);
+        System.out.println("Average weight of nearestInsertion: " + overallweightNearest/NUMBEROFGRAPHS);
+        System.out.println();
+        System.out.println("Time used for generating graphs from edge list in euler tour: " + usedTimeForGeneratingGraphFromEdge);
+
+    }
 }

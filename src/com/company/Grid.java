@@ -9,7 +9,7 @@ public class Grid {
     private List<List<Node>> gitterNetz;
     private Graph graph;
     private Integer gittersize;
-    private Map<Node, int[]> indizes;
+    private Map<Node, int[]> indizes = new HashMap<>();
 
 
 

@@ -6,11 +6,11 @@ import org.graphstream.graph.implementations.DefaultGraph;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
 public class A3 {
+     static long usedTimeForGeneratingGraphFromEdge = 0;
 
     /**
      * Returns minimal tree with the use of Prim algorithm
@@ -66,8 +66,10 @@ public class A3 {
      */
     public static List<Node> minimumSpanningTreeHeuristic(Graph graph, Map<Edge, Float> c){
         List<Edge> minimalTree = minimalSpanningTree(graph, c);
-        List<Node> eulerTour = generateEulerTour(minimalTree);
 
+        long time = System.currentTimeMillis();
+        List<Node> eulerTour = generateEulerTour(minimalTree);
+        usedTimeForGeneratingGraphFromEdge += System.currentTimeMillis()-time;
         removeDoubledNodes(eulerTour);
 
 
@@ -75,78 +77,69 @@ public class A3 {
     }
 
 
-    /**
-     * returns the shortest round trip W
-     *
-     * @param g graph
-     * @param c map Edge -> weight value
-     * @return the shortest round trip W
-     */
-    public static List<Node> nearestInsertion(Graph g, Map<Edge, Float> c) {
+    public static List<Node> nearestInsertion(Graph g, Map<Edge, Float> weight){
         if((g.getNodeCount() * (g.getNodeCount() - 1) / 2)!=g.getEdgeCount()){
             throw new IllegalArgumentException("The given graph is not full");
         }
 
-
-        List<Node> W = new ArrayList<>();
-
+        List<Node> W = new LinkedList<>();
+        List<Node> usedNodes = new LinkedList<>();
         Node startingNode = g.getNode(0);
+        PriorityQueue<Edge> neighboringEdges = new PriorityQueue<>(Comparator.comparing(weight::get));
+        neighboringEdges.addAll(startingNode.edges().toList());
+        Edge closestEdge = neighboringEdges.poll();
 
-        List<Node> usedNodes = new ArrayList<>();
 
-        // [startingNode, v1, v2, v3...]   -> später startingNode ans Ende  [startingNode, ... , startingNode]
         W.add(startingNode);
+        usedNodes.add(startingNode);
+        while(W.size() != g.getNodeCount()){
+            Node currentNode;
 
+            while (closestEdge != null && usedNodes.contains(closestEdge.getSourceNode()) && usedNodes.contains(closestEdge.getTargetNode())) {
+                closestEdge = neighboringEdges.poll();
+            }
 
-        while (W.size() != g.getNodeCount()) {
-
-            AtomicReference<Float> minD = new AtomicReference<>(Float.MAX_VALUE);
-            final Node[] minNode = new Node[1];
-            List<Node> finalW = W;
-            g.nodes().forEach((Node v) -> {
-                finalW.forEach((Node u) -> {
-                    if (u != v && v != startingNode && !finalW.contains(v)) {
-                        // node u from circle W,  node v potential nearest node from graph
-                        Edge edgeUV = u.getEdgeBetween(v);
-                        Float edgeWeight = c.get(edgeUV);
-
-                        if (edgeWeight < minD.get()) {
-                            minD.set(edgeWeight);
-                            minNode[0] = v;
-                        }
-                    }
-                });
-            });
-            W.add(minNode[0]);
-
-            //min permutation
-            List<Node> circleWithoutStartingNode = W.subList(1, W.size());
-            Stream<List<Node>> permutations = permutations(circleWithoutStartingNode);
-            AtomicReference<List<Node>> minPermutation = new AtomicReference<>();
-            AtomicReference<Float> minWeightCost = new AtomicReference<>(Float.MAX_VALUE);
-            AtomicReference<Float> weightCost = new AtomicReference<>(0f);
-            AtomicReference<List<Node>> currentNewW = new AtomicReference<>();
-            permutations.forEach((List<Node> permutation) -> {
-                weightCost.set(0f);
-                weightCost.updateAndGet(v -> v + c.get(startingNode.getEdgeBetween(permutation.get(0))));
-                for (int i = 0; i < permutation.size() - 1; i++) {
-                    int finalI = i;
-                    weightCost.updateAndGet(v -> v + c.get(permutation.get(finalI).getEdgeBetween(permutation.get(finalI + 1))));
+            if(closestEdge!=null){
+                if(usedNodes.contains(closestEdge.getSourceNode())){
+                    currentNode = closestEdge.getTargetNode();
+                }else{
+                    currentNode = closestEdge.getSourceNode();
                 }
 
-                weightCost.updateAndGet(v -> v + c.get(permutation.get(permutation.size() - 1).getEdgeBetween(startingNode)));
-                minPermutation.set(permutation);
-                if (weightCost.get() < minWeightCost.get()) {
-                    currentNewW.set(new ArrayList<>());
-                    minWeightCost.set(weightCost.get());
-                    currentNewW.get().add(startingNode);
-                    currentNewW.get().addAll(minPermutation.get());
-                }
-            });
-            W = currentNewW.get();
+                usedNodes.add(currentNode);
+                neighboringEdges.addAll(currentNode.edges().toList());
+
+                addMinimalPermutation(W, weight, currentNode);
+            }
         }
         W.add(startingNode);
         return W;
+    }
+
+
+
+    public static void addMinimalPermutation(List<Node> circle, Map<Edge, Float> weight, Node nodeToBeAdded){
+        float minWeightIncrease = Float.MAX_VALUE;
+        int minIndex = 0;
+        for (int i = 0; i < circle.size()-1; i++) {
+            float currentWeightIncrease = weight.get(circle.get(i).getEdgeBetween(nodeToBeAdded)) + weight.get(circle.get(i+1).getEdgeBetween(nodeToBeAdded))
+                    - weight.get(circle.get(i).getEdgeBetween(circle.get(i+1)));
+            if(currentWeightIncrease<minWeightIncrease){
+                minWeightIncrease = currentWeightIncrease;
+                minIndex=i;
+            }
+        }
+        if(circle.size()>1){
+            float weightIncreaseAtEnd = weight.get(circle.get(circle.size()-1).getEdgeBetween(nodeToBeAdded)) + weight.get(circle.get(0).getEdgeBetween(nodeToBeAdded))
+                    - weight.get(circle.get(circle.size()-1).getEdgeBetween(circle.get(0)));
+            if(minWeightIncrease<weightIncreaseAtEnd){
+                circle.add(minIndex+1, nodeToBeAdded);
+            }else{
+                circle.add(nodeToBeAdded);
+            }
+        }else {
+            circle.add(minIndex + 1, nodeToBeAdded);
+        }
     }
 
 
@@ -181,32 +174,11 @@ public class A3 {
 
 
     /**
-     * Helper method!
-     * Generates stream of Lists for every possible permutation/order of nodes in a list
-     * https://stackoverflow.com/questions/14132877/order-array-in-every-possible-sequence
-     *
-     * @param input list
-     * @return Stream of every possible list ordering
-     */
-    public static Stream<List<Node>> permutations(List<Node> input) {
-        if (input.size() == 1) {
-            return Stream.of(new LinkedList<>(input));
-        }
-        return input.stream()
-                .flatMap(first -> permutations(input.stream()
-                        .filter(a -> !a.equals(first))
-                        .toList())
-                        .map(LinkedList::new)
-                        .peek(l -> l.addFirst(first)));
-    }
-
-    /**
      * Overall method for generating an EulerTour by calling overloaded method with same name
      * @param minimalTree
      * @return
      */
     public static List<Node> generateEulerTour(List<Edge> minimalTree) {
-        System.out.println(minimalTree);
         Graph tree = generateGraphFromEdgeList(minimalTree);
        // generateEulerGraphFromTree(tree);
         List<Node> eulerTour = new ArrayList<>();
@@ -283,6 +255,8 @@ public class A3 {
      * @return
      */
     public static Graph generateGraphFromEdgeList(List<Edge> edges) {
+
+
         Graph g = new DefaultGraph("tree");
 
         for (Edge e : edges) {
@@ -311,7 +285,7 @@ public class A3 {
      */
     public static Float getWeightOfCircle(Graph g, List<Node> circle, Map<Edge, Float> c){
         Float counter = 0f;
-        for (int i = 0; i < circle.size()-2; i++) {
+        for (int i = 0; i < circle.size()-1; i++) {
             Float currentWeight = c.get(g.getNode(circle.get(i).getId()).getEdgeBetween(g.getNode(circle.get(i+1).getId())));
             counter+=currentWeight;
         }
