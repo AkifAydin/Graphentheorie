@@ -5,8 +5,6 @@ import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.DefaultGraph;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 
 
 public class A3 {
@@ -22,11 +20,9 @@ public class A3 {
     public static List<Edge> minimalSpanningTree(Graph g, Map<Edge, Float> c) {
         Node startingNode = g.getNode(0);
 
-
         List<Edge> ET = new ArrayList<>();
         List<Node> S = new ArrayList<>();
         S.add(startingNode);
-
 
         while (S != g.nodes().toList()) {
             List<Edge> allConnectedEdges = new ArrayList<>();
@@ -49,10 +45,8 @@ public class A3 {
                 } else {
                     S.add(minimalEdge.getSourceNode());
                 }
-
             } else {
                 return ET;
-                // throw new IllegalArgumentException("Minimale Kante konnte nicht gefunden werden");
             }
         }
         return ET;
@@ -67,9 +61,7 @@ public class A3 {
     public static List<Node> minimumSpanningTreeHeuristic(Graph graph, Map<Edge, Float> c){
         List<Edge> minimalTree = minimalSpanningTree(graph, c);
 
-        long time = System.currentTimeMillis();
         List<Node> eulerTour = generateEulerTour(minimalTree);
-        usedTimeForGeneratingGraphFromEdge += System.currentTimeMillis()-time;
         removeDoubledNodes(eulerTour);
 
 
@@ -77,6 +69,12 @@ public class A3 {
     }
 
 
+    /**
+     * Calculates a circle within given graph using the nearestInsertion algorithm
+     * @param g full weighted graph
+     * @param weight map of edge -> weight
+     * @return List of nodes in order of circle appearences
+     */
     public static List<Node> nearestInsertion(Graph g, Map<Edge, Float> weight){
         if((g.getNodeCount() * (g.getNodeCount() - 1) / 2)!=g.getEdgeCount()){
             throw new IllegalArgumentException("The given graph is not full");
@@ -117,12 +115,18 @@ public class A3 {
     }
 
 
-
+    /**
+     * Adds the nodeToBeAdded at the index in circle where it causes the least amount of overall weight gain
+     * @param circle
+     * @param weight
+     * @param nodeToBeAdded
+     */
     public static void addMinimalPermutation(List<Node> circle, Map<Edge, Float> weight, Node nodeToBeAdded){
         float minWeightIncrease = Float.MAX_VALUE;
         int minIndex = 0;
         for (int i = 0; i < circle.size()-1; i++) {
-            float currentWeightIncrease = weight.get(circle.get(i).getEdgeBetween(nodeToBeAdded)) + weight.get(circle.get(i+1).getEdgeBetween(nodeToBeAdded))
+            float currentWeightIncrease = weight.get(circle.get(i).getEdgeBetween(nodeToBeAdded))
+                    + weight.get(circle.get(i+1).getEdgeBetween(nodeToBeAdded))
                     - weight.get(circle.get(i).getEdgeBetween(circle.get(i+1)));
             if(currentWeightIncrease<minWeightIncrease){
                 minWeightIncrease = currentWeightIncrease;
@@ -130,7 +134,8 @@ public class A3 {
             }
         }
         if(circle.size()>1){
-            float weightIncreaseAtEnd = weight.get(circle.get(circle.size()-1).getEdgeBetween(nodeToBeAdded)) + weight.get(circle.get(0).getEdgeBetween(nodeToBeAdded))
+            float weightIncreaseAtEnd = weight.get(circle.get(circle.size()-1).getEdgeBetween(nodeToBeAdded))
+                    + weight.get(circle.get(0).getEdgeBetween(nodeToBeAdded))
                     - weight.get(circle.get(circle.size()-1).getEdgeBetween(circle.get(0)));
             if(minWeightIncrease<weightIncreaseAtEnd){
                 circle.add(minIndex+1, nodeToBeAdded);
@@ -180,12 +185,10 @@ public class A3 {
      */
     public static List<Node> generateEulerTour(List<Edge> minimalTree) {
         Graph tree = generateGraphFromEdgeList(minimalTree);
-       // generateEulerGraphFromTree(tree);
         List<Node> eulerTour = new ArrayList<>();
         List<Node> usedNodes = new ArrayList<>();
 
         generateEulerTour(tree.getNode(0), eulerTour, usedNodes);
-
 
         return eulerTour;
     }
@@ -206,7 +209,6 @@ public class A3 {
                 eulerTour.add(currentNode);
             }
         });
-
     }
 
     /**
@@ -234,28 +236,14 @@ public class A3 {
         return eulerTour;
     }
 
-    /**
-     * Helper method!
-     * Destructively transforms given tree into eulerGraph by doubling all edges
-     * @param tree
-     */
-    public static void generateEulerGraphFromTree(Graph tree) {
-        tree.edges().forEach((Edge e) -> {
-            Node sourceNode = e.getSourceNode();
-            Node targetNode = e.getTargetNode();
-
-            tree.addEdge(e.getId() + "2", sourceNode.getId(), targetNode.getId());
-        });
-    }
 
     /**
      * Helper method!
      * Takes a List of edges and returns a Graph with all edges and nodes of the edges added
      * @param edges
-     * @return
+     * @return graph generated from given edge list
      */
     public static Graph generateGraphFromEdgeList(List<Edge> edges) {
-
 
         Graph g = new DefaultGraph("tree");
 
@@ -275,13 +263,14 @@ public class A3 {
         return g;
     }
 
+
     /**
      * Hepler method!
      * Returns weight of given circle, ignores connection of last node with first node
-     * @param g
-     * @param circle
-     * @param c
-     * @return
+     * @param g full graph
+     * @param circle within graph g
+     * @param c weightMap
+     * @return Float value of summed weights
      */
     public static Float getWeightOfCircle(Graph g, List<Node> circle, Map<Edge, Float> c){
         Float counter = 0f;
@@ -292,6 +281,12 @@ public class A3 {
         return counter;
     }
 
+    /**
+     * Returns sum of edge weights of a given tree in form of edge list
+     * @param spanningTree tree in form of List<Edge>
+     * @param c weightMap for edges
+     * @return Float value of weights
+     */
     public static Float getEdgesum(List<Edge> spanningTree, Map<Edge, Float> c){
         Float counter = 0f;
         for (int i = 0; i < spanningTree.size(); i++) {

@@ -4,6 +4,7 @@ import org.graphstream.graph.*;
 import org.graphstream.graph.implementations.DefaultGraph;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,9 @@ public class A3Test {
 
     private static Graph k4Manual = new DefaultGraph("k4Manual");
     private static final Map<Edge, Float> k4ManualWeight = new HashMap<>();
+
+    private static Graph autoTSP1;
+    private static Map<Edge, Float> mapAutoTSP1;
 
     @BeforeAll
     public static void generate() {
@@ -113,6 +117,13 @@ public class A3Test {
         k4ManualWeight.put(k4Manual.getEdge("BD"), 6f);
         k4ManualWeight.put(k4Manual.getEdge("CD"), 5f);
 
+
+        //Auto TSP graphen
+        Map<Graph, Map<Edge, Float>> graphWeightMapAutoTSP1= generateCompleteGraphWithTSP(10);
+        autoTSP1 = graphWeightMapAutoTSP1.keySet().stream().toList().get(0);
+        mapAutoTSP1 = graphWeightMapAutoTSP1.get(autoTSP1);
+
+
     }
 
     @Test
@@ -128,7 +139,6 @@ public class A3Test {
         System.out.println("Spannbaum: " + minSpannBaum2);
     }
 
-
     @Test
     public void testNearestInsertion() {
         List<Node> rundreise = nearestInsertion(gClauck, cCklauck);
@@ -136,7 +146,6 @@ public class A3Test {
         System.out.println("\n\tGraph 1\nRundreise: " + rundreise + "\nRundreise: " + getWeightOfCircle(gClauck, rundreise, cCklauck)
                 + "\tSpanning tree: " + minSpanningTree + "\n" +
                 "Spannbaum: " + getEdgesum(minSpanningTree, cCklauck) + "\n");
-        assert (getWeightOfCircle(gClauck, rundreise, cCklauck) <= 2 * getEdgesum(minSpanningTree, cCklauck));
 
 
         Assert.assertThrows(IllegalArgumentException.class, () -> nearestInsertion(gClauck2, cCklauck2));
@@ -146,7 +155,6 @@ public class A3Test {
         System.out.println("\n\tGraph 3\nRundreise: " + rundreise3 + "\nRundreise: " + getWeightOfCircle(k4Manual, rundreise3, k4ManualWeight)
                 + " \tSpanning tree: " + minSpanningTree3 + "\n" +
                 "Spannbaum: " + getEdgesum(minSpanningTree3, k4ManualWeight) + "\n");
-        assert (getWeightOfCircle(k4Manual, rundreise3, k4ManualWeight) <= 2 * getEdgesum(minSpanningTree3, k4ManualWeight));
     }
 
     @Test
@@ -157,7 +165,6 @@ public class A3Test {
         System.out.println("\n\tGraph 1\nRundreise: " + rundreise + "\nRundreise: " + getWeightOfCircle(gClauck, rundreise, cCklauck)
                 + "\tSpanning tree: " + minSpanningTree + "\n" +
                 "Spannbaum: " + getEdgesum(minSpanningTree, cCklauck) + "\n");
-        assert (getWeightOfCircle(gClauck, rundreise, cCklauck) <= 2 * getEdgesum(minSpanningTree, cCklauck));
 
 
         List<Node> rundreise2 = minimumSpanningTreeHeuristic(k4Manual, k4ManualWeight);
@@ -166,9 +173,40 @@ public class A3Test {
         System.out.println("\n\tGraph 2\nRundreise: " + rundreise2 + "\nRundreise: " + getWeightOfCircle(k4Manual, rundreise2, k4ManualWeight)
                 + "\tSpanning tree: " + minSpanningTree2 + "\n" +
                 "Spannbaum: " + getEdgesum(minSpanningTree2, k4ManualWeight) + "\n");
-        assert (getWeightOfCircle(k4Manual, rundreise2, k4ManualWeight) <= 2 * getEdgesum(minSpanningTree2, k4ManualWeight));
     }
 
+
+    @Test
+    public void testMinimalSpanningTreeAutoTSP(){
+        System.out.println(autoTSP1.getNodeCount());
+    }
+
+
+    @Test
+    public void testNearestInsertionAutoTSP(){
+        List<Node> rundreise = nearestInsertion(autoTSP1, mapAutoTSP1);
+        List<Edge> minSpanningTree = minimalSpanningTree(autoTSP1, mapAutoTSP1);
+
+        for (Node n : rundreise) {
+            Assertions.assertNotNull(autoTSP1.getNode(n.getId()));
+        }
+        assert(getWeightOfCircle(autoTSP1,rundreise,mapAutoTSP1) < 2 * getEdgesum(minSpanningTree,mapAutoTSP1));
+
+    }
+
+    @Test
+    public void testMinimumSpanningTreeHeuristicAutoTSP(){
+        List<Node> rundreise = minimumSpanningTreeHeuristic(autoTSP1, mapAutoTSP1);
+        List<Edge> minSpanningTree = minimalSpanningTree(autoTSP1, mapAutoTSP1);
+
+        for (Node n : rundreise) {
+            Assertions.assertNotNull(autoTSP1.getNode(n.getId()));
+        }
+        System.out.println("rundreise weight: " + getWeightOfCircle(autoTSP1,rundreise,mapAutoTSP1) + "   weight tree: "
+                + getEdgesum(minSpanningTree,mapAutoTSP1));
+        assert(getWeightOfCircle(autoTSP1,rundreise,mapAutoTSP1) < 2 * getEdgesum(minSpanningTree,mapAutoTSP1));
+
+    }
 
     @Test
     public void testAlgorithmsWithGeneratedTSP() {
@@ -179,7 +217,7 @@ public class A3Test {
         Float overallweightNearest = 0f;
         for (int i = 0; i < NUMBEROFGRAPHS; i++) {
             long currentTimeMl;
-            Map<Graph, Map<Edge, Float>> graphAndMap = generateCompleteGraphWithTSP(500);
+            Map<Graph, Map<Edge, Float>> graphAndMap = generateCompleteGraphWithTSP(100);
             Graph tspGraph = graphAndMap.keySet().stream().toList().get(0);
             Map<Edge, Float> weightmap = graphAndMap.get(tspGraph);
 
